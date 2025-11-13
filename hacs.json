@@ -1,0 +1,8 @@
+{
+  "name": "MediaMTX Integration",
+  "content_in_root": false,
+  "render_readme": true,
+  "domain": "media_mtx",
+  "country": "US",
+  "homeassistant": "2024.6.0"
+}

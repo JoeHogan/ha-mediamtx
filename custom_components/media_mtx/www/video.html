@@ -1,0 +1,307 @@
+<html>
+
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width">
+        <style>
+        html, body {
+            position: relative;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            overflow: hidden;
+        }
+        body {
+            display: flex;
+        }
+        #video {
+            width: 100%;
+            background: black;
+            display: block;
+            align-self: center;
+        }
+        body.sleep #video, body.preview #video {
+            display: none;
+        }
+        body.fullscreen #video, body.fullscreen.sleep #video, body.fullscreen.preview #video {
+            display: block;
+            align-self: unset;
+        }
+        #canvas {
+            display: block;
+            min-width: 100%;
+            min-height: 100%;
+        }
+        #image {
+            display: none;
+            min-width: 100%;
+            min-height: 100%;
+        }
+        body.preview #image {
+            display: block;
+        }
+        body.fullscreen #canvas, body.preview #canvas, body.fullscreen #image, #image[src=""] {
+            display: none;
+        }
+
+        #loading {
+            display: none;
+            position: absolute;
+            z-index: 2;
+            top: calc(50% - 29px);
+            left: calc(50% - 29px);
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid rgba(0, 100, 150, 1);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 2s linear infinite;
+          }
+          body.loading #loading {
+            display: block;
+          }
+          
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        </style>
+        <script type="module">
+
+            import { getAccessToken } from "./refreshToken.js";
+            import { WHEPClient } from "./webrtc_v2.js";
+
+            class VideoControls {
+                constructor() {
+                    this.loading = true;
+                    this.fullscreen = false;
+                    this.config = this.getConfig();
+                    this.container = document.getElementById('body');
+                    this.container.classList.add(this.config.orientation || 'horizontal')
+                    if (this.config.allowSleep) {
+                        this.container.classList.add('sleep')
+                    }
+                    this.video = document.createElement("video");
+                    this.video.setAttribute("id", "video");
+                    this.video.controls = false;
+                    this.video.muted = true;
+                    this.video.autoplay = true;
+                    this.video.playsInline = true;
+                    this.video.onpause = () => this.play();
+                    this.video.onsuspend = () => this.play();
+                    this.video.onpause = () => this.play();
+                    this.canvas = document.createElement('canvas');
+                    this.canvas.setAttribute("id", "canvas");
+                    this.ctx = this.canvas.getContext("2d");
+                    this.image = document.createElement('img');
+                    this.image.setAttribute("id", "image");
+                    this.client = new WHEPClient(this.config, {
+                        connectionStateCb: this.connectionStateCb.bind(this),
+                        retryCb: this.retryCb.bind(this),
+                        onTrackCb: this.onTrackCb.bind(this)
+                    });
+                    if(this.config.preview) {
+                        this.playImagePreview();
+                    } else {
+                        this.restartStream();
+                    }
+                    document.body.appendChild(this.video);
+                    document.body.appendChild(this.canvas);
+                    document.body.appendChild(this.image);
+                }
+
+                getConfig() {
+                    let queryString = window.location.href.split("?")[1];
+                    let parts = queryString?.split('=') || [];
+                    let index = parts.indexOf('config');
+                    return index > -1 ? JSON.parse(atob(parts[index+1])) : {};
+                }
+
+                play() {
+                    if (this.isPlaying()) {
+                        return Promise.resolve();
+                    }
+                    if(!this.startingToPlay) {
+                        this.startingToPlay = this.video.play()
+                        .then(() => {
+                            this.startingToPlay = null;
+                        })
+                        .catch((err) => {
+                            console.log(`Error playing: ${err}`);
+                        });
+                    }
+                    return this.startingToPlay;
+                }
+
+                isPlaying() {
+                    if (!this.video) {
+                        return false;
+                    }
+                    return !!(this.video.currentTime > 0 && !this.video.paused && !this.video.ended && this.video.readyState > 2);
+                }
+
+                setState(state) {
+                    if(this.state) {
+                        this.container.classList.remove(this.state);
+                    }
+                    this.state = state;
+                    this.container.classList.add(this.state);
+                }
+
+                connectionStateCb(state) {
+                    this.setState(state);
+                    console.log(`${this.config.resource} connection state changed: ${this.state}`);
+                    if(['failed', 'closed', 'disconnected', 'connected', 'checking', 'new'].indexOf(this.state) === -1) {
+                        alert(`${this.config.resource} state: ${this.state}`);
+                    }
+                    if(this.playingImagePreview) {
+                        this.toggleLoading(false);
+                    } else if(this.state !== 'connected') {
+                        this.toggleLoading(true);
+                    } else {
+                        this.toggleLoading(false);
+                        if (!this.fullscreen) {
+                            this.togglePreview(true);
+                        }
+                    }
+                }
+
+                retryCb(pc) {
+                    return true;
+                }
+
+                onTrackCb(evt) {
+                    if(evt?.streams?.length) {
+                        console.log(`New ${this.config.resource} track: ${evt.track.kind}, streams: ${evt.streams.length}`);
+                        this.video.srcObject = evt.streams[0];
+                    }
+                }
+
+                restartStream() {
+                    this.toggleLoading(true);
+                    this.client?.scheduleRestart();
+                }
+
+                stopStream() {
+                    this.video?.pause();
+                    this.video?.removeAttribute('src');
+                    this.video?.load();
+                    this.client?.stop();
+                }
+
+                toggleLoading(loading) {
+                    this.loading = loading || false;
+                    let className = 'loading';
+                    if(this.loading) {
+                        this.container.classList.add(className);
+                    } else {
+                        this.container.classList.remove(className);
+                    }
+                }
+
+                toggleFullscreen(fullscreen) {
+                    this.fullscreen = fullscreen || false;
+                    let className = 'fullscreen';
+                    if(this.fullscreen) {
+                        this.container.classList.add(className);
+                        this.toggleMute(false);
+                        this.togglePreview(false);
+                    } else {
+                        this.container.classList.remove(className);
+                        this.toggleMute(true);
+                        this.togglePreview(true);
+                    }
+                }
+
+                toggleMute(mute) {
+                    this.video.muted = mute || false;
+                }
+
+                togglePreview(play) {
+                    if(play) {
+                        if(this.config.preview) {
+                            this.stopStream();
+                            this.playImagePreview();
+                        } else {
+                            this.playVideoPreview();
+                        }
+                    } else {
+                        if(this.config.preview) {
+                            this.restartStream();
+                        }
+                    }
+                }
+
+                playVideoPreview() {
+                    if (this.config.allowSleep && !this.playingVideoPreview) {
+                        this.playingVideoPreview = true;
+                        const fps = this.config.fps ? Math.max(Math.min(parseInt(this.config.fps), 60), 1) : 10;
+                        const step = (delay) => {
+                            setTimeout(() => {
+                                if(this.ctx && this.video) {
+                                    if(this.isPlaying()) {
+                                        this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+                                    } else {
+                                        this.play();
+                                    }
+                                }
+                                if (!this.fullscreen) {
+                                    requestAnimationFrame(() => step(1000 / fps));
+                                } else {
+                                    this.playingVideoPreview = false;
+                                }
+                            }, delay || 0);
+                        }
+                        requestAnimationFrame(() => step());
+                    }
+                }
+
+                async playImagePreview() {
+                    if (!this.playingImagePreview) {
+                        this.playingImagePreview = true;
+                        this.toggleLoading(false);
+                        this.setState('preview');
+                        
+                        const step = (delay) => {
+                            setTimeout(async () => {
+                                let access_token = await getAccessToken();
+                                if (this.image) {
+                                    this.image.src = `/api/mediamtx/img/${this.config.resource}.jpg?${access_token}&time=${new Date().toISOString()}`;
+                                }
+                                if (!this.fullscreen) {
+                                    step(this.config.previewInterval || 3000);
+                                } else {
+                                    this.playingImagePreview = false;
+                                }
+                            }, delay || 0);
+                        }
+                        step();
+                    }
+                }
+
+            };
+            
+            window.addEventListener('DOMContentLoaded', () => {
+                let controls = new VideoControls();
+                window.onmessage = (e) => {
+                    let key = e.data.key;
+                    let value = e.data.value;
+                    if (key === 'fullscreen') {
+                        controls.toggleFullscreen(value || false);
+                    } else if (key === 'mute') {
+                        controls.toggleMute(value || false);
+                    } else if (key === 'restart') {
+                        controls.restartStream();
+                    }
+                };
+            });
+        
+        </script>
+    </head>
+    <body id="body" class="loading">
+        <div id="loading"></div>
+    </body>
+
+</html>

@@ -1,0 +1,14 @@
+{
+    "domain": "media_mtx",
+    "name": "MediaMTX",
+    "version": "1.0.0",
+    "documentation": "https://github.com/JoeHogan/ha-mediamtx",
+    "issue_tracker": "https://github.com/JoeHogan/ha-mediamtx/issues",
+    "requirements": [],
+    "config_flow": true,
+    "dependencies": [
+        "http",
+        "lovelace"
+    ],
+    "codeowners": ["@JoeHogan"]
+}
