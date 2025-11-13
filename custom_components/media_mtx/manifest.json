@@ -10,5 +10,7 @@
         "http",
         "lovelace"
     ],
-    "codeowners": ["@JoeHogan"]
+    "codeowners": ["@JoeHogan"],
+    "icon": "mdi:video",
+    "logo": "https://github.com/JoeHogan/ha-mediamtx/main/icon.png"
 }
