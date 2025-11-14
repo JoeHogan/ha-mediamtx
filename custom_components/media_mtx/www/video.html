@@ -62,7 +62,7 @@
           body.loading #loading {
             display: block;
           }
-          
+
           @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
@@ -70,6 +70,7 @@
         </style>
         <script type="module">
 
+            import { getAccessToken } from "./refreshToken.js";
             import { WHEPClient } from "./webrtc_v2.js";
 
             class VideoControls {
@@ -262,11 +263,12 @@
                         this.playingImagePreview = true;
                         this.toggleLoading(false);
                         this.setState('preview');
-                        
+
                         const step = (delay) => {
                             setTimeout(async () => {
+                                let access_token = await getAccessToken();
                                 if (this.image) {
-                                    this.image.src = `/api/mediamtx/img/${this.config.resource}.jpg?time=${new Date().toISOString()}`;
+                                    this.image.src = `/api/mediamtx/img/${this.config.resource}.jpg?token=${access_token}&time=${new Date().toISOString()}`;
                                 }
                                 if (!this.fullscreen) {
                                     step(this.config.previewInterval || 3000);
@@ -280,7 +282,7 @@
                 }
 
             };
-            
+
             window.addEventListener('DOMContentLoaded', () => {
                 let controls = new VideoControls();
                 window.onmessage = (e) => {
@@ -295,7 +297,7 @@
                     }
                 };
             });
-        
+
         </script>
     </head>
     <body id="body" class="loading">

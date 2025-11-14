@@ -8,8 +8,32 @@ import aiohttp
 async def async_register_mediamtx_proxy(hass: HomeAssistant, entry: ConfigEntry):
     """Register a proxy route that forwards all HTTP methods to the configured MediaMTX service."""
 
+    async def authenticate(request: web.Request):
+        # Already authenticated by HA middleware
+        hass_user = request.get("hass_user")
+        if hass_user:
+            return hass_user
+
+        # Fallback: token in query param
+        token = request.query.get("token")
+        if not token:
+            return None
+
+        # Validate using HA token validation (sync in your version)
+        refresh_token = hass.auth.async_validate_access_token(token)
+        if refresh_token is None:
+            return None
+
+        # Return user from token
+        return refresh_token.user
+
     async def handle_proxy(request: web.Request):
         """Forward any request (including OPTIONS) to the configured service URL."""
+
+        # Authenticate user
+        hass_user = await authenticate(request)
+        if hass_user is None:
+            return web.json_response({"error": "Unauthorized"}, status=401)
 
         # Retrieve the configured service URL
         entry_data = hass.data[DOMAIN].get(entry.entry_id)
