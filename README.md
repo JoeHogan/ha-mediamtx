@@ -3,6 +3,15 @@
 This integration proxies API requests from Home Assistant to a MediaMTX service
 running on your local network.
 
+## Features
+
+- A WebRTC video component for Home Assistant and MediaMTX
+- Requests are authenticated via Home Assistant before being proxied to your MediaMTX instance.
+- Built for "wife friendly" use. Tap to go full screen, tap again to return.
+- Ideal for Kiosks. When not full screen, live video will not keep your screen alive, so your Kiosk can sleep properly.
+
+![Video Dashboard Example](assets/dashboard.png)
+
 ## Installation (via HACS)
 
 1. Go to HACS → Integrations → ⋮ → Custom repositories.
@@ -30,7 +39,26 @@ You’ll be prompted for your MediaMTX service URL (e.g. `http://192.168.1.X:889
 ### name
     Optional: the name you want to appear under the video
 
-# Card Usage Examples
+### activity
+    Optional: sensor events used to highlight camera activity
+
+    - entity: the sensor to track
+    - state: the state of the sensor used to determine if an activity is happening
+    - name: The name of the tag that will appear when the activity is occurring
+
+### event
+    Optional: sensor events used to automatically set video to full screen
+
+    - entity: the sensor to track
+    - state: the state of the sensor used to determine if an event is happening
+    - timeoutSeconds: how long to wait to return the video to normal size, assuming the event is ongoing
+
+### preview
+    Advanced/Optional: Show preview images to reduce memory. See advanced configuration information. 
+
+## Card Usage Examples
+
+### Basic
 
 ```
     - type: custom:mediamtx-webrtc-card
@@ -38,9 +66,36 @@ You’ll be prompted for your MediaMTX service URL (e.g. `http://192.168.1.X:889
       name: Driveway Camera
 ```
 
+### Activity and Events
 
-## Features
+```
+  - type: custom:mediamtx-webrtc-card
+    resource: driveway_camera
+    name: Driveway Camera
+    preview: true
+    activity:
+        - entity: binary_sensor.driveway_primary_zone_person_occupancy
+          state: 'on'
+          name: Person
+        - entity: binary_sensor.driveway_secondary_zone_car_occupancy
+          state: 'on'
+          name: Car
+    event:
+        entity: binary_sensor.driveway_secondary_zone_car_occupancy
+        state: 'on'
+        timeoutSeconds: 60
+```
 
-- Proxy HTTP requests securely through Home Assistant.
-- Supports authenticated requests via HA tokens.
-- Handles CORS automatically for frontend access.
+## Advanced Configuratoin
+
+You can configure MediaMTX to take snapshots of each camera at intervals (ie: every 3 seconds), and this integration can show those snapshots at an interval until you click on the video to go full screen, at which point the WebRTC stream begins. This is useful for displaying many camera streams on a single dashboard where you have memory constraints (ie: Fire Tablet). See the 'examples/image_preview' folder for instructions on how to configure MediaMTX. The important part is that requests are made to the same port as MediaMTX, but include /img/ in the path. You may use Nginx or similar to properly route that request.
+
+Once configured, you may simply add the 'preview' property:
+
+```
+  - type: custom:mediamtx-webrtc-card
+    resource: driveway_camera
+    name: Driveway Camera
+    preview: true
+```
+

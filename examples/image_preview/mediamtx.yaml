@@ -1,0 +1,8 @@
+## YOUR MediaMTX YAML CONFIG HERE
+
+## This is the relevant configuration to take snapshots of all of your cameras and save them to the /img folder using the camera name
+## Place this before your defined 'paths'
+pathDefaults:
+  runOnReady: ffmpeg -i rtsp://localhost:$RTSP_PORT/$RTSP_PATH -vf fps=1/3 -update 1 -y /img/$MTX_PATH.jpg
+  runOnReadyRestart: yes
+  runOnNotReady: cp -f /img/source.jpg /img/$MTX_PATH.jpg
