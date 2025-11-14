@@ -1,7 +1,6 @@
 # MediaMTX Integration for Home Assistant
 
-This integration proxies API requests from Home Assistant to a MediaMTX service
-running on your local network.
+This integration provides a WebRTC Video component for MediaMTX within Home Assistant.
 
 ## Features
 
@@ -25,6 +24,7 @@ with category **Integration**.
 3. Install **MediaMTX Integration**.
 4. Restart Home Assistant.
 5. Add the integration via *Settings → Devices & Services → Add Integration → MediaMTX*.
+6. Input the URL and port of your MediaMTX instance
 
 ## Configuration
 
@@ -53,7 +53,7 @@ You’ll be prompted for your MediaMTX service URL (e.g. `http://192.168.1.X:889
 
     - entity: the sensor to track
     - state: the state of the sensor used to determine if an event is happening
-    - timeoutSeconds: how long to wait to return the video to normal size, assuming the event is ongoing
+    - timeoutSeconds: how long to wait to return the video to normal size, assuming the event is ongoing. This is optional; omitting this keeps the video at full screen until manually closed.
 
 ### preview
     Advanced/Optional: Show preview images to reduce memory. See advanced configuration information. 
@@ -90,7 +90,9 @@ You’ll be prompted for your MediaMTX service URL (e.g. `http://192.168.1.X:889
 
 ## Advanced Configuratoin
 
-You can configure MediaMTX to take snapshots of each camera at intervals (ie: every 3 seconds), and this integration can show those snapshots at an interval until you click on the video to go full screen, at which point the WebRTC stream begins. This is useful for displaying many camera streams on a single dashboard where you have memory constraints (ie: Fire Tablet). See the 'examples/image_preview' folder for instructions on how to configure MediaMTX. The important part is that requests are made to the same port as MediaMTX, but include /img/ in the path. You may use Nginx or similar to properly route that request.
+You can configure MediaMTX to take snapshots of each camera at intervals (ie: every 3 seconds), and this integration can show those snapshots at an interval until you click on the video to go full screen, at which point the WebRTC stream begins. This is useful for displaying many camera streams on a single dashboard where you have memory constraints (ie: Fire Tablet). See the 'examples/image_preview' folder for instructions on how to configure MediaMTX.
+
+The important part is that requests are made to the same url/port as MediaMTX, but include /img/ in the path. You may use Nginx or similar to properly route requests for /img/ to your image folder while all other paths route though to MediaMTX.
 
 Once configured, you may simply add the 'preview' property:
 
