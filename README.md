@@ -9,6 +9,8 @@ running on your local network.
 - Requests are authenticated via Home Assistant before being proxied to your MediaMTX instance.
 - Built for "wife friendly" use. Tap to go full screen, tap again to return.
 - Ideal for Kiosks. When not full screen, live video will not keep your screen alive, so your Kiosk can sleep properly.
+- Support for 'activities' to call attention to people/objects in video
+- Support for 'events' which can automatically set video to full screen
 
 ![Video Dashboard Example](assets/dashboard.png)
 
