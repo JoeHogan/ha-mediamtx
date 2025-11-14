@@ -16,7 +16,7 @@ const getTokenFromHassConnection = () => {
             return {};
         })
     }
-    return {};
+    return Promise.resolve({});
 }
 
 const refreshWebToken = (data) => {

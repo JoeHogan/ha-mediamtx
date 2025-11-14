@@ -38,7 +38,7 @@ class MediaMtxWebrtcCard extends LitElement {
                                         <button type="button" @click="${this.toggleMute}">${this.mute ? html`<ha-icon icon="mdi:volume-off"></ha-icon>` : html`<ha-icon icon="mdi:volume-high"></ha-icon>`}</button>
                                         ${this.intercomConfig ?
                                             html`
-                                                <intercom-widget .hass=${this.hass} .config=${this.intercomConfig}></intercom-widget>
+                                                <ha-intercom-card .hass=${this.hass} .config=${this.intercomConfig}></ha-intercom-card>
                                             ` :
                                             html``
                                         }
@@ -284,7 +284,7 @@ class MediaMtxWebrtcCard extends LitElement {
             display: block;
             margin-bottom: 10px;
         }
-        .webrtc-video-controls intercom-widget {
+        .webrtc-video-controls ha-intercom-card {
             margin-bottom: 10px;
         }
         .webrtc-video-name {
