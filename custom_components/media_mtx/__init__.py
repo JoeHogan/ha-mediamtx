@@ -1,7 +1,13 @@
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 
-from .const import DOMAIN, CONF_SERVICE_URL
+from .const import (
+    DOMAIN, 
+    CONF_SERVICE_URL,
+    CONF_AUTH_METHOD,
+    CONF_AUTH_BASIC_USERNAME,
+    CONF_AUTH_BASIC_PASSWORD
+)
 
 from .http_api import async_register_mediamtx_proxy
 from . import utils
@@ -22,7 +28,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     entry_data = entry.data
 
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = {CONF_SERVICE_URL: entry_data[CONF_SERVICE_URL]}
+    hass.data[DOMAIN][entry.entry_id] = {
+        CONF_SERVICE_URL: entry_data[CONF_SERVICE_URL],
+        CONF_AUTH_METHOD: entry_data[CONF_AUTH_METHOD],
+        CONF_AUTH_BASIC_USERNAME: entry_data[CONF_AUTH_BASIC_USERNAME] if CONF_AUTH_BASIC_USERNAME in entry_data else None,
+        CONF_AUTH_BASIC_PASSWORD: entry_data[CONF_AUTH_BASIC_PASSWORD] if CONF_AUTH_BASIC_PASSWORD in entry_data else None,
+    }
+    
 
     # Register backend API
     await async_register_mediamtx_proxy(hass, entry)

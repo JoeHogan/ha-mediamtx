@@ -5,11 +5,15 @@ This integration provides a WebRTC Video component for MediaMTX within Home Assi
 ## Features
 
 - A WebRTC video component for Home Assistant and MediaMTX
-- Requests are authenticated via Home Assistant before being proxied to your MediaMTX instance.
+- Choice of authentication to MediaMTX server:
+  - Via Home Assistant before being proxied to your MediaMTX instance.
+  - `BASIC` authentication proxied via Home Assistant
+  - None
 - Built for "wife friendly" use. Tap to go full screen, tap again to return.
 - Ideal for Kiosks. When not full screen, live video will not keep your screen alive, so your Kiosk can sleep properly.
 - Support for 'activities' to call attention to people/objects in video
 - Support for 'events' which can automatically set video to full screen
+- Support for multiple MediaMTX servers
 
 ![Video Dashboard Example](assets/dashboard.png)
 
@@ -24,7 +28,7 @@ with category **Integration**.
 3. Install **MediaMTX Integration**.
 4. Restart Home Assistant.
 5. Add the integration via *Settings → Devices & Services → Add Integration → MediaMTX*.
-6. Input the URL and port of your MediaMTX instance
+6. Input the URL and port of each of your MediaMTX instance
 
 ## Configuration
 
@@ -37,6 +41,11 @@ You’ll be prompted for your MediaMTX service URL (e.g. `http://192.168.1.X:889
 
 ### resource
     Required: the name of your MediaMTX camera stream
+
+### entry_id
+    Required: ID of the MediaMTX server to use. Copy paste from settings page
+
+![Entry ID](assets/entry_id.png)
 
 ### name
     Optional: the name you want to appear under the video
@@ -64,6 +73,7 @@ You’ll be prompted for your MediaMTX service URL (e.g. `http://192.168.1.X:889
 
 ```
     - type: custom:mediamtx-webrtc-card
+      entry_id: 01KCXWDR7C4DVVSAHFW7MQGWPT
       resource: driveway_camera
       name: Driveway Camera
 ```
@@ -72,6 +82,7 @@ You’ll be prompted for your MediaMTX service URL (e.g. `http://192.168.1.X:889
 
 ```
   - type: custom:mediamtx-webrtc-card
+    entry_id: 01KCXWDR7C4DVVSAHFW7MQGWPT
     resource: driveway_camera
     name: Driveway Camera
     preview: true
@@ -88,7 +99,7 @@ You’ll be prompted for your MediaMTX service URL (e.g. `http://192.168.1.X:889
         timeoutSeconds: 60
 ```
 
-## Advanced Configuratoin
+## Advanced Configuration
 
 You can configure MediaMTX to take snapshots of each camera at intervals (ie: every 3 seconds), and this integration can show those snapshots at an interval until you click on the video to go full screen, at which point the WebRTC stream begins. This is useful for displaying many camera streams on a single dashboard where you have memory constraints (ie: Fire Tablet). See the 'examples/image_preview' folder for instructions on how to configure MediaMTX.
 
@@ -98,8 +109,12 @@ Once configured, you may simply add the 'preview' property:
 
 ```
   - type: custom:mediamtx-webrtc-card
+    entry_id: 01KCXWDR7C4DVVSAHFW7MQGWPT
     resource: driveway_camera
     name: Driveway Camera
     preview: true
 ```
 
+## Remote Access
+
+You can view cameras remotely with the Home Assistant mobile app if connected back to your home network with a VPN such as WireGuard.

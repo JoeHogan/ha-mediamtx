@@ -268,7 +268,7 @@
                             setTimeout(async () => {
                                 let access_token = await getAccessToken();
                                 if (this.image) {
-                                    this.image.src = `/api/mediamtx/img/${this.config.resource}.jpg?token=${access_token}&time=${new Date().toISOString()}`;
+                                    this.image.src = `/api/mediamtx/${this.config.entry_id}/img/${this.config.resource}.jpg?token=${access_token}&time=${new Date().toISOString()}`;
                                 }
                                 if (!this.fullscreen) {
                                     step(this.config.previewInterval || 3000);
