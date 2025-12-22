@@ -36,7 +36,7 @@ class MediaMtxWebrtcCard extends LitElement {
                                 html`
                                     <div class="webrtc-video-controls" @click="${this.controlsClicked}">
                                         <button type="button" @click="${this.toggleMute}">${this.mute ? html`<ha-icon icon="mdi:volume-off"></ha-icon>` : html`<ha-icon icon="mdi:volume-high"></ha-icon>`}</button>
-                                        ${this.intercomConfig ?
+                                        ${this.intercomConfig && 1 === 2 ?
                                             html`
                                                 <ha-intercom-card .hass=${this.hass} .config=${this.intercomConfig}></ha-intercom-card>
                                             ` :
@@ -185,7 +185,7 @@ class MediaMtxWebrtcCard extends LitElement {
         throw new Error("You need to define a resource");
         }
         if (config.intercom) {
-            this.intercomConfig = {...{hideStatus: true, hideTranscription: true}, ...config.intercom};
+            this.intercomConfig = {...{display: 'single'}, ...config.intercom};
         }
         this.config = config;
     }
