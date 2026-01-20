@@ -115,7 +115,7 @@ const generateSdpFragment = (offerData, candidates) => {
 
 export class WHEPClient {
     constructor(config, options) {
-        this.url = '/api/mediamtx';
+        this.url = `/api/mediamtx/${config.entry_id}`;
         this.urlIndex = 0;
         this.resource = config.resource;
         this.pc = null;
@@ -232,7 +232,7 @@ export class WHEPClient {
                 if (res.status !== 201) {
                     return Promise.reject('bad status code');
                 }
-                this.sessionUrl = ('/api/mediamtx'+res.headers.get('location')).toString();
+                this.sessionUrl = (this.url + res.headers.get('location')).toString();
                 return res.text();
             })
             .then((sdp) => this.onRemoteAnswer(new RTCSessionDescription({
