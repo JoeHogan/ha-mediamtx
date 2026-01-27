@@ -115,7 +115,7 @@ const generateSdpFragment = (offerData, candidates) => {
 
 export class WHEPClient {
     constructor(config, options) {
-        this.url = `/api/mediamtx/${config.entry_id}`;
+        this.url = `/api/mediamtx/${config.entry_id || 'default'}`;
         this.urlIndex = 0;
         this.resource = config.resource;
         this.pc = null;

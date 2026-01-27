@@ -2,17 +2,18 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from aiohttp import web, hdrs
 from .const import (
-    DOMAIN, 
+    DOMAIN,
     CONF_SERVICE_URL,
     CONF_AUTH_METHOD,
     CONF_AUTH_BASIC_USERNAME,
     CONF_AUTH_BASIC_PASSWORD,
     AUTH_METHOD_PASSTHRU,
     AUTH_METHOD_NONE,
-    AUTH_METHOD_BASIC
+    AUTH_METHOD_BASIC,
 )
 import aiohttp
 import base64
+
 
 async def async_register_mediamtx_proxy(hass: HomeAssistant, entry: ConfigEntry):
     """Register a proxy route that forwards all HTTP methods to the configured MediaMTX service."""
@@ -35,18 +36,21 @@ async def async_register_mediamtx_proxy(hass: HomeAssistant, entry: ConfigEntry)
 
         # Return user from token
         return refresh_token.user
-    
+
     async def downstream_authentication_header(request: web.Request, entry_data):
         if entry_data[CONF_AUTH_METHOD] == AUTH_METHOD_NONE:
             return ""
         elif entry_data[CONF_AUTH_METHOD] == AUTH_METHOD_PASSTHRU:
-            return request.get(hdrs.AUTHORIZATION)
+            authHdr = request.get(hdrs.AUTHORIZATION)
+            return "" if authHdr is None else authHdr
         elif entry_data[CONF_AUTH_METHOD] == AUTH_METHOD_BASIC:
             credential = f"{entry_data[CONF_AUTH_BASIC_USERNAME]}:{entry_data[CONF_AUTH_BASIC_PASSWORD]}"
-            b64_credential = base64.b64encode(credential.encode("utf-8")).decode('utf-8')
+            b64_credential = base64.b64encode(credential.encode("utf-8")).decode(
+                "utf-8"
+            )
             return f"Basic {b64_credential}"
         else:
-            raise(f"unsupported auth method:{entry_data[CONF_AUTH_METHOD]}")
+            raise ValueError(f"unsupported auth method:{entry_data[CONF_AUTH_METHOD]}")
 
     async def handle_proxy(request: web.Request):
         """Forward any request (including OPTIONS) to the configured service URL."""
@@ -64,7 +68,7 @@ async def async_register_mediamtx_proxy(hass: HomeAssistant, entry: ConfigEntry)
             )
 
         base_url = entry_data[CONF_SERVICE_URL].rstrip("/")
-        
+
         tail = request.match_info.get("tail", "")
         target_url = f"{base_url}/{tail}".rstrip("/")
 
@@ -72,14 +76,11 @@ async def async_register_mediamtx_proxy(hass: HomeAssistant, entry: ConfigEntry)
         params = dict(request.query)
 
         # Forward only the headers we care about
-        headers = {
-            k: v
-            for k, v in request.headers.items()
-            if k in ("Content-Type")
-        }
+        headers = {k: v for k, v in request.headers.items() if k in ("Content-Type")}
 
-        headers[hdrs.AUTHORIZATION] = await downstream_authentication_header(request, entry_data)
-
+        headers[hdrs.AUTHORIZATION] = await downstream_authentication_header(
+            request, entry_data
+        )
 
         # Read request body, if any
         try:
@@ -112,4 +113,9 @@ async def async_register_mediamtx_proxy(hass: HomeAssistant, entry: ConfigEntry)
                 )
 
     # Register the route manually (wildcard = all methods)
-    hass.http.app.router.add_route("*", f"/api/mediamtx/{entry.entry_id}/{{tail:.*}}", handle_proxy)
+    hass.http.app.router.add_route(
+        "*", f"/api/mediamtx/{entry.entry_id}/{{tail:.*}}", handle_proxy
+    )
+    hass.http.app.router.add_route(
+        "*", f"/api/mediamtx/default/{{tail:.*}}", handle_proxy
+    )

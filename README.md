@@ -43,7 +43,7 @@ You’ll be prompted for your MediaMTX service URL (e.g. `http://192.168.1.X:889
     Required: the name of your MediaMTX camera stream
 
 ### entry_id
-    Required: ID of the MediaMTX server to use. Copy paste from settings page
+    Optional: ID of the MediaMTX server to use, if using more than one. Copy paste from settings page.
 
 ![Entry ID](assets/entry_id.png)
 
