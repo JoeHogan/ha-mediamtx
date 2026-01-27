@@ -257,7 +257,7 @@ class MediaMtxWebrtcCard extends LitElement {
         }
         .webrtc-video-overlay {
             position: absolute;
-            z-index: 2;
+            z-index: 0;
             top: 0;
             left: 0;
             right: 0;
@@ -268,7 +268,7 @@ class MediaMtxWebrtcCard extends LitElement {
             top: 0;
             right: 0;
             padding: 10px;
-            z-index: 3;
+            z-index: 1;
             display: none;
         }
         .webrtc-video.fullscreen .webrtc-video-controls {
@@ -296,14 +296,14 @@ class MediaMtxWebrtcCard extends LitElement {
             background: rgba(0, 0, 0, 0.3);
             color: white;
             padding: 10px 20px;
-            z-index: 3;
+            z-index: 1;
         }
         .activities {
             position: absolute;
             top: 0;
             left: 0;
             padding: 10px;
-            z-index: 3;
+            z-index: 1;
             display: none;
         }
         .webrtc-video.activity .activities {
