@@ -135,13 +135,13 @@ export class WHEPClient {
     async start() {
         console.log("requesting ICE servers");
         let access_token = await getAccessToken();
-        return fetch(this.resourceUrl+`/whep`, {
+        return fetch(this.resourceUrl + `/whep`, {
             method: 'OPTIONS',
             headers: {
                 "Authorization": `Bearer ${access_token}`,
                 "Content-Type": "application/json",
             },
-            })
+        })
             .then((res) => this.onIceServers(res))
             .catch((err) => {
                 if (Array.isArray(this.url)) {
@@ -155,7 +155,7 @@ export class WHEPClient {
     handleConnectionError(err) {
         console.log('error: ' + err);
         if (this.retryCb) {
-            if (this.retryCb(this.pc)){
+            if (this.retryCb(this.pc)) {
                 return this.setDelay(5000).then(() => this.scheduleRestart());
             }
         } else {
@@ -187,7 +187,7 @@ export class WHEPClient {
     getConnectionState() {
         if (this.pc) {
             let state = this.pc.iceConnectionState;
-            if(!state) {
+            if (!state) {
                 console.log(`Awaiting Connection State...`);
                 return this.setDelay(500).then(() => this.getConnectionState());
             }
@@ -199,14 +199,14 @@ export class WHEPClient {
         return Promise.resolve(state);
     }
 
-    onTrack(evt){
+    onTrack(evt) {
         if (this.onTrackCb) {
             this.onTrackCb(evt);
         }
     }
 
     setDelay(delay) {
-        console.log(`Waiting ${Math.round(delay/1000)} seconds...`);
+        console.log(`Waiting ${Math.round(delay / 1000)} seconds...`);
         return new Promise((res) => {
             setTimeout(() => res(), delay || 0);
         });
@@ -220,7 +220,7 @@ export class WHEPClient {
 
         console.log("sending offer");
         let access_token = await getAccessToken();
-        return fetch(this.resourceUrl+`/whep`, {
+        return fetch(this.resourceUrl + `/whep`, {
             method: 'POST',
             headers: {
                 "Authorization": `Bearer ${access_token}`,
@@ -246,22 +246,22 @@ export class WHEPClient {
 
     onConnectionState() {
         return this.getConnectionState()
-        .then((state) => {
-            this.connectionState = state;
+            .then((state) => {
+                this.connectionState = state;
 
-            console.log("peer connection state:", state);
+                console.log("peer connection state:", state);
 
-            if(this.connectionStateCb) {
-                this.connectionStateCb(state);
-            }
+                if (this.connectionStateCb) {
+                    this.connectionStateCb(state);
+                }
 
-            if(this.isDisconnected()) {
-                console.log('restarting...');
-                return this.scheduleRestart();
-            }
+                if (this.isDisconnected()) {
+                    console.log('restarting...');
+                    return this.scheduleRestart();
+                }
 
-            return state;
-        });
+                return state;
+            });
     }
 
     isConnected() {
@@ -275,18 +275,18 @@ export class WHEPClient {
     onRemoteAnswer(answer) {
         if (this.pc && !this.isConnected()) {
             return this.pc.setRemoteDescription(answer)
-            .then(() => {
-                if (this.queuedCandidates.length !== 0) {
-                    this.queuedCandidates.forEach(item => this.pc.addIceCandidate(item));
-                    return this.sendLocalCandidates(this.queuedCandidates)
-                    .then(() => {
-                        this.queuedCandidates = [];
-                    });
-                }
-            })
-            .catch((err) => {
-                return this.handleConnectionError(err);
-            });
+                .then(() => {
+                    if (this.queuedCandidates.length !== 0) {
+                        this.queuedCandidates.forEach(item => this.pc.addIceCandidate(item));
+                        return this.sendLocalCandidates(this.queuedCandidates)
+                            .then(() => {
+                                this.queuedCandidates = [];
+                            });
+                    }
+                })
+                .catch((err) => {
+                    return this.handleConnectionError(err);
+                });
         }
         return Promise.resolve();
     }
@@ -312,53 +312,53 @@ export class WHEPClient {
             },
             body: generateSdpFragment(this.offerData, candidates),
         })
-        .then((res) => {
-            if (res.status !== 204) {
-                return Promise.reject('bad status code');
-            }
-        })
-        .catch((err) => {
-            return this.handleConnectionError(err);
-        });
+            .then((res) => {
+                if (res.status !== 204) {
+                    return Promise.reject('bad status code');
+                }
+            })
+            .catch((err) => {
+                return this.handleConnectionError(err);
+            });
     }
 
     async clearSession() {
         if (this.sessionUrl) {
             let access_token = await getAccessToken();
-            return fetch(this.sessionUrl, {
+            fetch(this.sessionUrl, {
                 method: 'DELETE',
                 headers: {
                     "Authorization": `Bearer ${access_token}`,
                     "Content-Type": "application/json",
                 },
             })
-            .then((res) => {
-                if (res.status !== 200) {
-                    return Promise.reject('bad status code');
-                }
-            })
-            .catch((err) => {
-                console.log('delete session error: ' + err);
-            });
+                .then((res) => {
+                    if (res.status !== 200) {
+                        console.log('delete session error: ' + res.status);
+                    }
+                })
+                .catch((err) => {
+                    console.log('delete session error: ' + err);
+                });
         }
         return Promise.resolve();
     }
 
     scheduleRestart() {
         return this.stop()
-        .then(() => {
-            return this.clearSession()
-            .finally(() => {
-                this.sessionUrl = '';
-                this.connectionState = 'disconnected';
-                this.queuedCandidates = [];
-                return this.start();
+            .then(() => {
+                return this.clearSession()
+                    .finally(() => {
+                        this.sessionUrl = '';
+                        this.connectionState = 'disconnected';
+                        this.queuedCandidates = [];
+                        return this.start();
+                    });
             });
-        });
     }
 
     stop() {
-        if(this.pc !== null) {
+        if (this.pc !== null) {
             this.dc = null;
             this.pc.close();
             this.pc = null;
