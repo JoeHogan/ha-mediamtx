@@ -2,7 +2,7 @@ import {
     LitElement,
     html,
     css
-  } from "https://unpkg.com/lit-element@4.1.1/lit-element.js?module";
+} from "https://unpkg.com/lit-element@4.1.1/lit-element.js?module";
 
 class MediaMtxWebrtcCard extends LitElement {
 
@@ -33,21 +33,21 @@ class MediaMtxWebrtcCard extends LitElement {
                             ${this.getActivityBadges()}
 
                             ${this.fullscreen ?
-                                html`
+                html`
                                     <div class="webrtc-video-controls" @click="${this.controlsClicked}">
                                         <button type="button" @click="${this.toggleMute}">${this.mute ? html`<ha-icon icon="mdi:volume-off"></ha-icon>` : html`<ha-icon icon="mdi:volume-high"></ha-icon>`}</button>
                                         ${this.intercomConfig && 1 === 2 ?
-                                            html`
+                        html`
                                                 <ha-intercom-card .hass=${this.hass} .config=${this.intercomConfig}></ha-intercom-card>
                                             ` :
-                                            html``
-                                        }
+                        html``
+                    }
                                         <button type="button" @click="${this.restartVideo}"><ha-icon icon="mdi:restart"></ha-icon></button>
                                     </div>
                                 `
-                                :
-                                html``
-                            }
+                :
+                html``
+            }
 
                             ${this.getName()}
 
@@ -86,11 +86,11 @@ class MediaMtxWebrtcCard extends LitElement {
 
                 let existing = this.ongoingEvents.find(oe => oe.entity === event.entity);
                 if (existing) {
-                    if(!show) { // state changed
+                    if (!show) { // state changed
                         this.ongoingEvents = this.ongoingEvents.filter(oe => oe.entity !== event.entity);
                         return false;
                     } // state hasnt changed... check visibility
-                    if(existing.show) {
+                    if (existing.show) {
                         return true;
                     }
                     return false;
@@ -98,9 +98,9 @@ class MediaMtxWebrtcCard extends LitElement {
                 if (!show) {
                     return false; // not existing but not a matching event
                 }
-                let oe = {...event, ...{show: true}};
+                let oe = { ...event, ...{ show: true } };
                 this.ongoingEvents.push(oe); // new event. show by default
-                if(event.timeoutSeconds) {
+                if (event.timeoutSeconds) {
                     setTimeout(() => {
                         oe.show = false; // if event has a timeout configured, trigger visibility change
                         this.getOpenOnEvent(); // recheck
@@ -111,10 +111,10 @@ class MediaMtxWebrtcCard extends LitElement {
             })
             let hasOngoingEvents = ongoingEvents?.length || false;
 
-            if(hasOngoingEvents) {
+            if (hasOngoingEvents) {
                 if (!this.hasOngoingEvents) {
                     this.hasOngoingEvents = true;
-                    if(!this.fullscreen) {
+                    if (!this.fullscreen) {
                         this.fullScreenAutoToggled = true;
                         this.toggleFullscreen();
                     }
@@ -137,10 +137,10 @@ class MediaMtxWebrtcCard extends LitElement {
     postMessage(key, value, attempt = 0) {
         if (!this.iframe.contentWindow) {
             if (attempt < 3) {
-                setTimeout(() => this.postMessage(key, value, attempt++), 500);
+                setTimeout(() => this.postMessage(key, value, attempt + 1), 500);
             }
         } else {
-            this.iframe.contentWindow.postMessage({key, value}, window.location.origin);
+            this.iframe.contentWindow.postMessage({ key, value }, window.location.origin);
         }
     }
 
@@ -148,8 +148,8 @@ class MediaMtxWebrtcCard extends LitElement {
         e?.preventDefault();
         e?.stopPropagation();
         this.fullscreen = this.fullscreen ? false : true;
-        if(this.fullscreen) {
-            this.mute = false;
+        if (this.fullscreen) {
+            if (e) this.mute = false;
         } else {
             this.ongoingEvents.forEach(event => event.show = false); // if fullscreen was toggled by an ongoing event, then closing fullscreen manually should prevent event from retoggling it
         }
@@ -168,12 +168,18 @@ class MediaMtxWebrtcCard extends LitElement {
         this.requestUpdate();
     }
 
-    restartVideo() {
+    restartVideo(e) {
+        e?.preventDefault();
+        e?.stopPropagation();
         this.postMessage('restart', true);
     }
 
     firstUpdated() {
-       this.iframe.src = `/media_mtx/video.html${this.configToQs()}`;
+        this.iframe.onload = () => {
+            this.postMessage('fullscreen', this.fullscreen);
+            this.postMessage('mute', this.mute);
+        };
+        this.iframe.src = `/media_mtx/video.html${this.configToQs()}`;
     }
 
     configToQs() {
@@ -182,10 +188,10 @@ class MediaMtxWebrtcCard extends LitElement {
 
     setConfig(config) {
         if (!config.resource) {
-        throw new Error("You need to define a resource");
+            throw new Error("You need to define a resource");
         }
         if (config.intercom) {
-            this.intercomConfig = {...{display: 'single'}, ...config.intercom};
+            this.intercomConfig = { ...{ display: 'single' }, ...config.intercom };
         }
         this.config = config;
     }
@@ -202,10 +208,10 @@ class MediaMtxWebrtcCard extends LitElement {
         return html`
             <div class="activities">
                 ${unique.map(name => {
-                    return html`
+            return html`
                         <div class="activity-badge">${name}</div>
                     `
-                })}
+        })}
             </div>
         `
     }
@@ -345,6 +351,6 @@ class MediaMtxWebrtcCard extends LitElement {
     }
 }
 
-if(!customElements.get("mediamtx-webrtc-card")) {
+if (!customElements.get("mediamtx-webrtc-card")) {
     customElements.define("mediamtx-webrtc-card", MediaMtxWebrtcCard);
 }

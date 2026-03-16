@@ -324,6 +324,7 @@ export class WHEPClient {
 
     async clearSession() {
         if (this.sessionUrl) {
+            let access_token = await getAccessToken();
             return fetch(this.sessionUrl, {
                 method: 'DELETE',
                 headers: {
@@ -358,20 +359,9 @@ export class WHEPClient {
 
     stop() {
         if(this.pc !== null) {
-            let promise = new Promise((res) => {
-                if (this.dc !== null && !this.isDisconnected()) {
-                    this.dc.onclose = () => {
-                        this.dc = null;
-                        this.setDelay(3000).then(() => res());
-                    };
-                } else {
-                    this.dc = null;
-                    res();
-                }
-            });
+            this.dc = null;
             this.pc.close();
             this.pc = null;
-            return promise;
         }
         return Promise.resolve();
     }
