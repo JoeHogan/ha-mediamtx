@@ -201,12 +201,12 @@
                     }
                 }
 
-                toggleFullscreen(fullscreen) {
+                toggleFullscreen(fullscreen, fromEvent = false) {
                     this.fullscreen = fullscreen || false;
                     let className = 'fullscreen';
                     if(this.fullscreen) {
                         this.container.classList.add(className);
-                        this.toggleMute(false);
+                        this.toggleMute(fromEvent);
                         this.togglePreview(false);
                     } else {
                         this.container.classList.remove(className);
@@ -290,7 +290,9 @@
                     let key = e.data.key;
                     let value = e.data.value;
                     if (key === 'fullscreen') {
-                        controls.toggleFullscreen(value || false);
+                        controls.toggleFullscreen((value || false));
+                    } else if (key === 'autofullscreen') {
+                        controls.toggleFullscreen((value || false), true);
                     } else if (key === 'mute') {
                         controls.toggleMute(value || false);
                     } else if (key === 'restart') {

@@ -147,13 +147,15 @@ class MediaMtxWebrtcCard extends LitElement {
     toggleFullscreen(e) {
         e?.preventDefault();
         e?.stopPropagation();
+        const message = 'fullscreen';
         this.fullscreen = this.fullscreen ? false : true;
         if (this.fullscreen) {
             if (e) this.mute = false;
         } else {
+            message = 'autofullscreen';
             this.ongoingEvents.forEach(event => event.show = false); // if fullscreen was toggled by an ongoing event, then closing fullscreen manually should prevent event from retoggling it
         }
-        this.postMessage('fullscreen', this.fullscreen);
+        this.postMessage(message, this.fullscreen);
         this.requestUpdate();
     }
 
