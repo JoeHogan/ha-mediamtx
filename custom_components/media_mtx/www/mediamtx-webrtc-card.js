@@ -147,7 +147,7 @@ class MediaMtxWebrtcCard extends LitElement {
     toggleFullscreen(e) {
         e?.preventDefault();
         e?.stopPropagation();
-        const message = 'fullscreen';
+        let message = 'fullscreen';
         this.fullscreen = this.fullscreen ? false : true;
         if (this.fullscreen) {
             if (e) this.mute = false;
