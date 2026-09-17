@@ -12,19 +12,23 @@ class MediaMtxWebrtcCard extends LitElement {
         this.mute = true;
         this.iframe = document.createElement('iframe');
         this.ongoingEvents = [];
+        this._hasOngoingEvent = false;
     }
 
     static get properties() {
         return {
             hass: {},
             config: {},
+            fullscreen: { type: Boolean },
+            mute: { type: Boolean },
+            _hasOngoingEvent: { type: Boolean }
         };
     }
 
     render() {
         return html`
             <ha-card>
-                <div class="webrtc-video ${this.fullscreen ? 'fullscreen' : ''} ${this.getActivity().length ? 'activity' : ''} ${this.getOpenOnEvent() ? 'ongoing-event' : ''}">
+                <div class="webrtc-video ${this.fullscreen ? 'fullscreen' : ''} ${this.getActivity().length ? 'activity' : ''} ${this._hasOngoingEvent ? 'ongoing-event' : ''}">
 
                     <div class="webrtc-video-container">
 
@@ -62,6 +66,14 @@ class MediaMtxWebrtcCard extends LitElement {
         `;
     }
 
+    updated(changedProperties) {
+        super.updated(changedProperties);
+
+        if (changedProperties.has('hass')) {
+            this._checkEvents();
+        }
+    }
+
     getActivity() {
         if (this.config?.activity && this.hass?.states) {
             let activities = Array.isArray(this.config.activity) ? this.config.activity : [this.config.activity];
@@ -75,63 +87,58 @@ class MediaMtxWebrtcCard extends LitElement {
         return [];
     }
 
-    getOpenOnEvent() {
-        if (this.config?.event && this.hass?.states) {
-            let events = Array.isArray(this.config.event) ? this.config.event : [this.config.event];
-            let ongoingEvents = events.filter((event) => {
-                let entity = this.hass.states[event?.entity] || {};
-                let state = entity.state || 'Unknown';
-                let matchState = event.state || true; // default matching state
-                let show = state === matchState ? true : false;
-
-                let existing = this.ongoingEvents.find(oe => oe.entity === event.entity);
-                if (existing) {
-                    if (!show) { // state changed
-                        this.ongoingEvents = this.ongoingEvents.filter(oe => oe.entity !== event.entity);
-                        return false;
-                    } // state hasnt changed... check visibility
-                    if (existing.show) {
-                        return true;
-                    }
-                    return false;
-                }
-                if (!show) {
-                    return false; // not existing but not a matching event
-                }
-                let oe = { ...event, ...{ show: true } };
-                this.ongoingEvents.push(oe); // new event. show by default
-                if (event.timeoutSeconds) {
-                    setTimeout(() => {
-                        oe.show = false; // if event has a timeout configured, trigger visibility change
-                        this.getOpenOnEvent(); // recheck
-                    }, event.timeoutSeconds * 1000);
-                }
-                return true;
-
-            })
-            let hasOngoingEvents = ongoingEvents?.length || false;
-
-            if (hasOngoingEvents) {
-                if (!this.hasOngoingEvents) {
-                    this.hasOngoingEvents = true;
-                    if (!this.fullscreen) {
-                        this.fullScreenAutoToggled = true;
-                        this.toggleFullscreen();
-                    }
-                }
-            } else if (this.hasOngoingEvents) {
-                this.hasOngoingEvents = false;
-                if (this.fullscreen && this.fullScreenAutoToggled) {
-                    if (this.fullscreen) {
-                        this.toggleFullscreen();
-                    }
-                    this.fullScreenAutoToggled = false;
-                }
-            }
-
-            return hasOngoingEvents;
+    _checkEvents() {
+        if (!this.config?.event || !this.hass?.states) {
+            this._hasOngoingEvent = false;
+            return;
         }
-        return false;
+
+        const events = Array.isArray(this.config.event) ? this.config.event : [this.config.event];
+        let shouldBeActive = false;
+
+        for (const event of events) {
+            const entity = this.hass.states[event?.entity];
+            const state = entity?.state || 'Unknown';
+            const matchState = event.state ?? 'on'; // default matching state
+
+            if (state === matchState) {
+                let existing = this.ongoingEvents.find(oe => oe.entity === event.entity);
+
+                if (!existing) {
+                    const oe = { entity: event.entity, show: true };
+                    this.ongoingEvents.push(oe);
+
+                    if (event.timeoutSeconds) {
+                        setTimeout(() => {
+                            oe.show = false;
+                            this._cleanupFinishedEvents();
+                        }, event.timeoutSeconds * 1000);
+                    }
+                }
+
+                if (existing ? existing.show : true) {
+                    shouldBeActive = true;
+                }
+            } else {
+                // State returned to normal, remove from ongoing tracker
+                this.ongoingEvents = this.ongoingEvents.filter(oe => oe.entity !== event.entity);
+            }
+        }
+
+        if (shouldBeActive && !this.fullscreen) {
+            this.fullScreenAutoToggled = true;
+            this.toggleFullscreen();
+        } else if (!shouldBeActive && this.fullscreen && this.fullScreenAutoToggled) {
+            this.fullScreenAutoToggled = false;
+            this.toggleFullscreen();
+        }
+
+        this._hasOngoingEvent = shouldBeActive;
+    }
+
+    _cleanupFinishedEvents() {
+        this.ongoingEvents = this.ongoingEvents.filter(oe => oe.show);
+        this._checkEvents();
     }
 
     postMessage(key, value, attempt = 0) {
@@ -156,7 +163,6 @@ class MediaMtxWebrtcCard extends LitElement {
             this.ongoingEvents.forEach(event => event.show = false); // if fullscreen was toggled by an ongoing event, then closing fullscreen manually should prevent event from retoggling it
         }
         this.postMessage(message, this.fullscreen);
-        this.requestUpdate();
     }
 
     controlsClicked(e) {
@@ -167,7 +173,6 @@ class MediaMtxWebrtcCard extends LitElement {
     toggleMute() {
         this.mute = this.mute ? false : true;
         this.postMessage('mute', this.mute);
-        this.requestUpdate();
     }
 
     restartVideo(e) {
@@ -356,3 +361,17 @@ class MediaMtxWebrtcCard extends LitElement {
 if (!customElements.get("mediamtx-webrtc-card")) {
     customElements.define("mediamtx-webrtc-card", MediaMtxWebrtcCard);
 }
+
+// Push to card registry and trigger rebuild
+window.customCards = window.customCards || [];
+if (!window.customCards.some(card => card.type === "mediamtx-webrtc-card")) {
+    window.customCards.push({
+        type: "mediamtx-webrtc-card",
+        name: "MediaMTX WebRTC Card",
+        description: "WebRTC live stream card via MediaMTX",
+        preview: false
+    });
+}
+
+// Notify Lovelace to re-scan for custom cards
+window.dispatchEvent(new Event("ll-rebuild"));
