@@ -4,6 +4,13 @@ import {
     css
 } from "./lit-element.bundle.js";
 
+const SUPPORTED_ASPECT_RATIOS = {
+    '4:3': '4 / 3',
+    '4/3': '4 / 3',
+    '16:9': '16 / 9',
+    '16/9': '16 / 9',
+};
+
 class MediaMtxWebrtcCard extends LitElement {
 
     constructor() {
@@ -26,7 +33,7 @@ class MediaMtxWebrtcCard extends LitElement {
             <ha-card>
                 <div class="webrtc-video ${this.fullscreen ? 'fullscreen' : ''} ${this.getActivity().length ? 'activity' : ''} ${this.getOpenOnEvent() ? 'ongoing-event' : ''}">
 
-                    <div class="webrtc-video-container">
+                    <div class="webrtc-video-container" style="${this.getAspectRatioStyle()}">
 
                         <div class="webrtc-video-overlay" @click="${this.toggleFullscreen}">
 
@@ -147,15 +154,13 @@ class MediaMtxWebrtcCard extends LitElement {
     toggleFullscreen(e) {
         e?.preventDefault();
         e?.stopPropagation();
-        let message = 'fullscreen';
         this.fullscreen = this.fullscreen ? false : true;
         if (this.fullscreen) {
             if (e) this.mute = false;
         } else {
-            message = 'autofullscreen';
             this.ongoingEvents.forEach(event => event.show = false); // if fullscreen was toggled by an ongoing event, then closing fullscreen manually should prevent event from retoggling it
         }
-        this.postMessage(message, this.fullscreen);
+        this.postMessage('fullscreen', this.fullscreen);
         this.requestUpdate();
     }
 
@@ -195,6 +200,9 @@ class MediaMtxWebrtcCard extends LitElement {
         if (config.intercom) {
             this.intercomConfig = { ...{ display: 'single' }, ...config.intercom };
         }
+        if (config.aspect_ratio !== undefined && !this.normalizeAspectRatio(config.aspect_ratio)) {
+            console.warn(`mediamtx-webrtc-card: unsupported aspect_ratio "${config.aspect_ratio}", expected "4:3" or "16:9". Falling back to 16:9.`);
+        }
         this.config = config;
     }
 
@@ -216,6 +224,19 @@ class MediaMtxWebrtcCard extends LitElement {
         })}
             </div>
         `
+    }
+
+    // Only "4:3" and "16:9" (and their "/" equivalents) are supported.
+    // Returns the CSS aspect-ratio value (e.g. "4 / 3") or null if unsupported.
+    normalizeAspectRatio(ar) {
+        if (ar === undefined || ar === null || ar === '') return null;
+        let key = String(ar).trim();
+        return SUPPORTED_ASPECT_RATIOS[key] || null;
+    }
+
+    getAspectRatioStyle() {
+        let value = this.normalizeAspectRatio(this.config?.aspect_ratio) || SUPPORTED_ASPECT_RATIOS['16:9'];
+        return `--mediamtx-aspect-ratio: ${value};`;
     }
 
     getName() {
@@ -261,7 +282,10 @@ class MediaMtxWebrtcCard extends LitElement {
             width: 100%;
             height: 100%;
             overflow: hidden;
-            aspect-ratio: 16/9;
+            aspect-ratio: var(--mediamtx-aspect-ratio, 16 / 9);
+        }
+        .webrtc-video.fullscreen .webrtc-video-container {
+            aspect-ratio: unset;
         }
         .webrtc-video-overlay {
             position: absolute;

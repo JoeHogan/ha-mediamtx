@@ -12,10 +12,19 @@ from .const import (
 from .http_api import async_register_mediamtx_proxy
 from . import utils
 from pathlib import Path
+import hashlib
 
 import logging
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _asset_version(path: Path) -> str:
+    """Short content hash used as the resource cache-bust tag."""
+    try:
+        return hashlib.sha1(path.read_bytes()).hexdigest()[:12]
+    except OSError:
+        return "0"
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
@@ -43,9 +52,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     path = Path(__file__).parent / "www"
     await utils.register_static_path(hass, f"/{DOMAIN}", str(path))
 
-    # Register Lovelace resource
-    version = getattr(hass.data.get("integrations", {}).get(DOMAIN), "version", "0")
-    await utils.init_resource(hass, f"/{DOMAIN}/mediamtx-webrtc-card.js", str(version))
+    # Register the card as a Lovelace dashboard resource with a content-hash
+    # cache-bust tag (HACS-style). Editing the card + restarting HA changes the
+    # tag, so every browser auto-refetches it - no manual cache clearing.
+    card_file = path / "mediamtx-webrtc-card.js"
+    tag = await hass.async_add_executor_job(_asset_version, card_file)
+    await utils.init_resource(hass, f"/{DOMAIN}/mediamtx-webrtc-card.js", tag)
 
     return True
 

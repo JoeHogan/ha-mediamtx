@@ -16,15 +16,53 @@ async def register_static_path(hass, url_path: str, directory_path: str):
     _LOGGER.debug("Registered static directory: %s -> %s", url_path, directory_path)
 
 
-async def init_resource(hass, url_path: str, version: str):
-    """Auto-register a Lovelace resource (JS module) via frontend integration."""
+async def init_resource(hass, url_path: str, tag: str) -> bool:
+    """Register (or update) the card as a Lovelace dashboard resource, HACS-style.
+
+    The ``tag`` (a content hash) is appended as ``?hacstag=<tag>`` so the URL
+    changes whenever the file changes -> browsers auto-refetch (cache-bust).
+    Falls back to a frontend extra_module_url when the Lovelace resource store
+    is unavailable (e.g. YAML-mode dashboards).
+    """
+    versioned = f"{url_path}?hacstag={tag}"
+
+    resources = getattr(hass.data.get("lovelace"), "resources", None)
+    if resources is not None:
+        try:
+            # Ensure the resource store is loaded before reading/writing it.
+            await resources.async_get_info()
+
+            for resource in resources.async_items():
+                # Match on the path, ignoring any existing ?hacstag=... query.
+                if resource["url"].split("?")[0] == url_path:
+                    if resource["url"] != versioned:
+                        await resources.async_update_item(
+                            resource["id"], {"url": versioned}
+                        )
+                        _LOGGER.info("Updated card resource -> %s", versioned)
+                    else:
+                        _LOGGER.debug("Card resource already current: %s", versioned)
+                    return True
+
+            await resources.async_create_item(
+                {"res_type": "module", "url": versioned}
+            )
+            _LOGGER.info("Registered card resource: %s", versioned)
+            return True
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning(
+                "Could not register Lovelace resource (%s); "
+                "falling back to extra_module_url",
+                err,
+            )
+
+    # Fallback: load as a frontend module (works even in YAML-mode Lovelace).
     try:
-        # Home Assistant provides this helper to ensure resources are tracked properly
-        from homeassistant.components.frontend import async_register_built_in_panel
         from homeassistant.components.frontend import add_extra_js_url
 
-        # This is the simpler, version-safe way to tell HA about your JS module
-        add_extra_js_url(hass, url_path)
-        _LOGGER.info("Added Lovelace JS resource: %s (v%s)", url_path, version)
-    except Exception as err:
-        _LOGGER.warning("Unable to auto-register Lovelace resource: %s", err)
+        add_extra_js_url(hass, versioned)
+        _LOGGER.info("Loaded card via extra_module_url: %s", versioned)
+        return True
+    except Exception as err:  # noqa: BLE001
+        _LOGGER.error("Unable to load card resource: %s", err)
+        return False
