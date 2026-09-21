@@ -19,6 +19,8 @@ class MediaMtxWebrtcCard extends LitElement {
         this.mute = true;
         this.iframe = document.createElement('iframe');
         this.ongoingEvents = [];
+        this.dismissedEvents = new Set();
+        this.offDebounceTimers = new Map();
     }
 
     static get properties() {
@@ -93,10 +95,33 @@ class MediaMtxWebrtcCard extends LitElement {
 
                 let existing = this.ongoingEvents.find(oe => oe.entity === event.entity);
                 if (existing) {
-                    if (!show) { // state changed
-                        this.ongoingEvents = this.ongoingEvents.filter(oe => oe.entity !== event.entity);
+                    if (!show) {
+                        // Sensor went off — debounce before removing so brief
+                        // flickers don't reset dismissal state
+                        if (!this.offDebounceTimers.has(event.entity)) {
+                            let debounceMs = (event.debounceSeconds || 30) * 1000;
+                            let timer = setTimeout(() => {
+                                // Debounce expired — sensor genuinely off, full reset
+                                this.ongoingEvents = this.ongoingEvents.filter(oe => oe.entity !== event.entity);
+                                this.dismissedEvents.delete(event.entity);
+                                this.offDebounceTimers.delete(event.entity);
+                                this.requestUpdate();
+                            }, debounceMs);
+                            this.offDebounceTimers.set(event.entity, timer);
+                        }
+                        // During debounce, preserve current show state so
+                        // fullscreen stays open if user hasn't dismissed
+                        return existing.show;
+                    }
+                    // Sensor is on — cancel any pending off-debounce
+                    if (this.offDebounceTimers.has(event.entity)) {
+                        clearTimeout(this.offDebounceTimers.get(event.entity));
+                        this.offDebounceTimers.delete(event.entity);
+                    }
+                    // If user already dismissed this event, don't re-open
+                    if (this.dismissedEvents.has(event.entity)) {
                         return false;
-                    } // state hasnt changed... check visibility
+                    }
                     if (existing.show) {
                         return true;
                     }
@@ -105,12 +130,20 @@ class MediaMtxWebrtcCard extends LitElement {
                 if (!show) {
                     return false; // not existing but not a matching event
                 }
+                // New event — if user previously dismissed during this
+                // detection cycle (shouldn't normally happen with debounce
+                // but acts as a safety net), respect the dismissal
+                if (this.dismissedEvents.has(event.entity)) {
+                    let oe = { ...event, ...{ show: false } };
+                    this.ongoingEvents.push(oe);
+                    return false;
+                }
                 let oe = { ...event, ...{ show: true } };
                 this.ongoingEvents.push(oe); // new event. show by default
                 if (event.timeoutSeconds) {
                     setTimeout(() => {
                         oe.show = false; // if event has a timeout configured, trigger visibility change
-                        this.getOpenOnEvent(); // recheck
+                        this.requestUpdate();
                     }, event.timeoutSeconds * 1000);
                 }
                 return true;
@@ -158,7 +191,10 @@ class MediaMtxWebrtcCard extends LitElement {
         if (this.fullscreen) {
             if (e) this.mute = false;
         } else {
-            this.ongoingEvents.forEach(event => event.show = false); // if fullscreen was toggled by an ongoing event, then closing fullscreen manually should prevent event from retoggling it
+            this.ongoingEvents.forEach(event => {
+                event.show = false;
+                this.dismissedEvents.add(event.entity); // remember user dismissed this event
+            });
         }
         this.postMessage('fullscreen', this.fullscreen);
         this.requestUpdate();
