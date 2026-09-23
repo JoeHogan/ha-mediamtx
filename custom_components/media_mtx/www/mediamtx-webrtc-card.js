@@ -188,15 +188,23 @@ class MediaMtxWebrtcCard extends LitElement {
         e?.preventDefault();
         e?.stopPropagation();
         this.fullscreen = this.fullscreen ? false : true;
+        const wasAutoToggled = this.fullScreenAutoToggled;
         if (this.fullscreen) {
-            if (e) this.mute = false;
+            if (e) {
+                this.mute = false;
+                this.fullScreenAutoToggled = false;
+            }
         } else {
+            this.mute = true;
+            this.fullScreenAutoToggled = false;
             this.ongoingEvents.forEach(event => {
                 event.show = false;
                 this.dismissedEvents.add(event.entity); // remember user dismissed this event
             });
         }
-        this.postMessage('fullscreen', this.fullscreen);
+        const key = (this.fullScreenAutoToggled || (wasAutoToggled && !e) || !e) ? 'autofullscreen' : 'fullscreen';
+        this.postMessage(key, this.fullscreen);
+        this.postMessage('mute', this.mute);
         this.requestUpdate();
     }
 
@@ -219,7 +227,8 @@ class MediaMtxWebrtcCard extends LitElement {
 
     firstUpdated() {
         this.iframe.onload = () => {
-            this.postMessage('fullscreen', this.fullscreen);
+            const key = this.fullScreenAutoToggled ? 'autofullscreen' : 'fullscreen';
+            this.postMessage(key, this.fullscreen);
             this.postMessage('mute', this.mute);
         };
         this.iframe.src = `/media_mtx/video.html${this.configToQs()}`;

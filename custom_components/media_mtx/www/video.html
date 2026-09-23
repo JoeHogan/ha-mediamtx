@@ -91,7 +91,6 @@
                     this.video.playsInline = true;
                     this.video.onpause = () => this.play();
                     this.video.onsuspend = () => this.play();
-                    this.video.onpause = () => this.play();
                     this.canvas = document.createElement('canvas');
                     this.canvas.setAttribute("id", "canvas");
                     this.ctx = this.canvas.getContext("2d");
@@ -125,11 +124,17 @@
                     }
                     if(!this.startingToPlay) {
                         this.startingToPlay = this.video.play()
-                        .then(() => {
-                            this.startingToPlay = null;
-                        })
                         .catch((err) => {
                             console.log(`Error playing: ${err}`);
+                            // If unmuted playback is blocked by browser policy, fall back to muted autoplay
+                            if (!this.video.muted) {
+                                console.log("Retrying playback muted...");
+                                this.video.muted = true;
+                                return this.video.play().catch(e => console.log(`Error playing muted fallback: ${e}`));
+                            }
+                        })
+                        .finally(() => {
+                            this.startingToPlay = null;
                         });
                     }
                     return this.startingToPlay;
@@ -175,7 +180,10 @@
                 onTrackCb(evt) {
                     if(evt?.streams?.length) {
                         console.log(`New ${this.config.resource} track: ${evt.track.kind}, streams: ${evt.streams.length}`);
-                        this.video.srcObject = evt.streams[0];
+                        if (this.video.srcObject !== evt.streams[0]) {
+                            this.video.srcObject = evt.streams[0];
+                        }
+                        this.play();
                     }
                 }
 
@@ -186,8 +194,12 @@
 
                 stopStream() {
                     this.video?.pause();
-                    this.video?.removeAttribute('src');
-                    this.video?.load();
+                    if (this.video) {
+                        this.video.srcObject = null;
+                        this.video.removeAttribute('src');
+                        this.video.load();
+                    }
+                    this.startingToPlay = null;
                     this.client?.stop();
                 }
 
@@ -217,6 +229,9 @@
 
                 toggleMute(mute) {
                     this.video.muted = mute || false;
+                    if (!this.video.muted && !this.isPlaying()) {
+                        this.play();
+                    }
                 }
 
                 togglePreview(play) {
